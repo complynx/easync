@@ -102,7 +102,7 @@ Promise.__init__
 ``__init__(function[, daemon=False, print_exception=logging.ERROR])``
 
 The constructor creates a ``threading.Thread`` wrapping the ``function``.
-To start it, call the resulting object as a function with it's arguments. (Explained in `Promise.call`_)
+To start it, call the resulting object as a function with it's arguments. (Explained in `Promise.__call__`_)
 
 >>> promise = Promise(func, print_exception=None)
 >>> promise()
