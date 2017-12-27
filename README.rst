@@ -111,6 +111,8 @@ To start it, call the resulting object as a function with it's arguments. (Expla
 :param daemon: Sets up daemon flag in the thread. May be set later. Optional.
 :param print_exception: Sets up the final exception printing level. Pass ``False`` to suppress.
 
+.. _Promise-call:
+
 .. _Promise.call:
 
 Promise.__call__
@@ -121,7 +123,7 @@ Promise.__call__
 Starts the thread and passes the arguments of the function into it.
 Returns self, for simple adding `Promise.then`_, `Promise.wait`_ or `Promise.catch`_.
 
-.. _Promise.wait:
+.. _Promise-wait:
 
 Promise.wait
 ------------
@@ -166,7 +168,7 @@ This is done to have this kind of behaviour:
 :print_exception:       Passed into the corresponding argument of the newly created Promise_.
 :return:                New Promise_.
 
-.. _Promise.catch:
+.. _Promise-catch:
 
 Promise.catch
 -------------
