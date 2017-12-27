@@ -166,7 +166,7 @@ class Promise(threading.Thread):
     Rejections thus are based on exceptions and resolutions are simply function results.
     """
     Callable = None
-    Result = None
+    result = None
     args = None
     kwargs = None
     resolved = None
@@ -235,7 +235,7 @@ class Promise(threading.Thread):
             self()
 
         elif not callable(func):
-            self.Result = func
+            self.result = func
             self.started.set()
             self.finished.set()
             self.resolved = True
@@ -249,7 +249,7 @@ class Promise(threading.Thread):
         :rtype: Promise
         """
         p = Promise()
-        p.Result = thing
+        p.result = thing
         return p
 
     @staticmethod
@@ -402,19 +402,21 @@ class Promise(threading.Thread):
         if not self.finished.is_set():
             raise TimeoutError()
         else:
-            return self.Result
+            return self.result
 
-    def then(self, resolved=None, failed=None, print_exception=None):
+    def then(self, resolved=None, rejected=None, print_exception=None):
         """
         The promise result. This function creates a new Promise which waits for current one, and calls corresponding
         function:
 
         :param resolved: Is called when function ended up conveniently. Receives result as a parameter.
-        :param failed: Is called if function raises an exception, receives the exception.
+        :param rejected: Is called if function raises an exception, receives the exception.
         :param print_exception: Log level to output the exception, or None to mute it. See `logging`.
         :rtype: Promise
         """
-        self.print_exception = print_exception
+        if print_exception is None:
+            print_exception = self.print_exception
+        self.print_exception = None
         me = self
 
         def wait_and_resolve():
@@ -422,12 +424,18 @@ class Promise(threading.Thread):
             Waits for current promise and resolves it.
             """
             me.wait()
-            if me.resolved is True and callable(resolved):
-                return resolved(me.Result)
-            elif callable(failed):
-                return failed(me.exception)
+            if me.resolved is True:
+                if callable(resolved):
+                    return resolved(me.result)
+                else:
+                    return me.result
+            else:
+                if callable(rejected):
+                    return rejected(me.exception)
+                else:
+                    raise me.exception
 
-        p = Promise(wait_and_resolve)
+        p = Promise(wait_and_resolve, print_exception=print_exception)
         return p()
 
     def catch(self, callback=None, print_exception=None):
@@ -438,7 +446,7 @@ class Promise(threading.Thread):
         :param print_exception: Log level to output the exception, or None to mute it.
         :rtype: Promise
         """
-        return self.then(failed=callback, print_exception=print_exception)
+        return self.then(rejected=callback, print_exception=print_exception)
 
     def run(self):
         """
@@ -447,7 +455,7 @@ class Promise(threading.Thread):
         Runs the function and then the callback.
         """
         try:
-            self.Result = self.Callable(*self.args, **self.kwargs)
+            self.result = self.Callable(*self.args, **self.kwargs)
             self.resolved = True
         except Exception as e:
             info = sys.exc_info()
@@ -505,5 +513,7 @@ def async(function=None, daemon=False, print_exception=logging.ERROR):
             return Promise(function,
                            daemon=daemon,
                            print_exception=print_exception)(*args, **kwargs)
+
+        async_caller.async = True
 
         return async_caller

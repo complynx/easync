@@ -4,6 +4,7 @@
 import easync
 import threading
 import logging
+import inspect
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -24,6 +25,9 @@ def to_fail():
 
 @easync.async
 def set_true():
+    """
+    this is comment
+    """
     pause_event.wait()
     to_be_true.set()
     return 5
@@ -36,10 +40,30 @@ def set_true_twostage():
     return 5
 
 
+class Stub(object):
+    @easync.async
+    def set_true(self):
+        """
+        this is comment
+        """
+        pause_event.wait()
+        to_be_true.set()
+        return 5
+
+
 def test_async():
     to_be_true.clear()
     pause_event.clear()
     set_true()
+    pause_event.set()
+    assert to_be_true.wait(1)
+
+
+def test_async_method():
+    to_be_true.clear()
+    pause_event.clear()
+    o = Stub()
+    o.set_true()
     pause_event.set()
     assert to_be_true.wait(1)
 
@@ -120,7 +144,7 @@ def test_promise_simple():
     p.wait(1)
     assert p.finished.is_set()
     assert p.resolved
-    assert p.Result == 1
+    assert p.result == 1
 
 
 def test_promise_resolve():
@@ -133,7 +157,7 @@ def test_promise_resolve():
     p.wait(1)
     assert p.finished.is_set()
     assert p.resolved
-    assert p.Result == 1
+    assert p.result == 1
 
 
 def test_promise_reject():
@@ -159,8 +183,8 @@ def test_promise_all():
     p.wait(1)
     assert p.finished.is_set()
     assert p.resolved
-    assert p.Result[0] == 1
-    assert p.Result[1] == to_be_true
+    assert p.result[0] == 1
+    assert p.result[1] == to_be_true
 
 
 def test_promise_race():
@@ -173,4 +197,22 @@ def test_promise_race():
     p.wait(1)
     assert p.finished.is_set()
     assert p.resolved
-    assert p.Result == 1
+    assert p.result == 1
+
+
+def test_async_functools():
+    assert "this is comment" in set_true.__doc__
+    assert "set_true" in set_true.__name__
+    assert set_true.async
+    assert callable(set_true)
+    assert not inspect.ismethod(set_true)
+    assert inspect.isfunction(set_true)
+
+
+def test_async_method_functools():
+    o = Stub()
+    assert "this is comment" in o.set_true.__doc__
+    assert "set_true" in o.set_true.__name__
+    assert o.set_true.async
+    assert inspect.ismethod(o.set_true)
+    assert not inspect.isfunction(o.set_true)
