@@ -115,7 +115,7 @@ Promise.__call__
 ``__call__(*args, **kwargs)``
 
 Starts the thread and passes the arguments of the function into it.
-Returns self, for simple adding `Promise.then`_(), `Promise.wait`_() or `Promise.catch`_().
+Returns self, for simple adding `Promise::then`_(), `Promise.wait`_() or `Promise.catch`_().
 
 Promise.wait
 ------------
@@ -128,7 +128,7 @@ If ``timeout`` is set, raises ``easync.TimeoutError`` if it's reached.
 
 Returns result of the underlying function if there's any.
 
-Promise.then
+Promise::then
 ------------
 
 ``then([resolved=None, rejected=None, print_exception=Promise.print_exception])``
