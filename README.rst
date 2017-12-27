@@ -51,8 +51,10 @@ First, the resolution is based upon the return of the function beneath.
 On successful return, the result is stored in `Promise.result`_
 On exception, exception is stored in `Promise.exception`_
 
-You can add callbacks by using methods `Promise.then`_() or `Promise.catch`_().
-They will create a new `Promise`_ resolving in either the resolution of the previous one or the underlying callback.
+You can add callbacks by using methods `Promise.then`_
+or `Promise.catch`_
+They will create a new `Promise`_
+resolving in either the resolution of the previous one or the underlying callback.
 
 If at the final stage no exception is processed or were generated new ones, they will be printed.
 
