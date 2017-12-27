@@ -154,11 +154,12 @@ This is done to have this kind of behaviour:
 
 >>> Promise(action)(...args).then(parse_result).then(parse_one_more_result).catch(any_exception).then(cleanup)
 
-:resolved(result):      The positive callback for the Promise_. Has to accept one positional argument - the result.
-:rejected(exception):   The negative callback for the Promise_. Has to accept one positional argument - the caught
-                        exception.
-:print_exception:       Passed into the corresponding argument of the newly created Promise_.
-:return:                New Promise_.
+:function resolved(result):         The positive callback for the Promise_. Has to accept one positional argument -
+                                    the result.
+:function rejected(exception):      The negative callback for the Promise_. Has to accept one positional argument -
+                                    the caught exception.
+:print_exception:                   Passed into the corresponding argument of the newly created Promise_.
+:return:                            New Promise_.
 
 Promise.catch
 -------------
