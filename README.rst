@@ -9,8 +9,10 @@ EAsync -- easy async decorator and promises
 
 Decorator around the functions for them to be asynchronous.
 
-Used as a plain decorator or along with named arguments. Preserves function's or method's docs, names and other stuff.
-When wrapped function is called, it produces the Promise_.
+Used as a simple decorator or along with named arguments. Preserves function's or method's docs, names and other stuff
+using ``functools.wraps``.
+
+When the wrapped function is called, it produces the Promise_ of itself.
 
 Usage:
 
