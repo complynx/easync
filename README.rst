@@ -94,13 +94,13 @@ Promise.resolved
     True if the function resolves.
 
 
-init
-----
+Promise.__init__
+----------------
 
 ``__init__(function[, daemon=False, print_exception=logging.ERROR])``
 
 The constructor creates a ``threading.Thread`` wrapping the ``function``.
-To start it, call the resulting object as a function with it's arguments. (Explained in `Promise.__call__`__())
+To start it, call the resulting object as a function with it's arguments. (Explained in `Promise.call`_())
 
 >>> promise = Promise(func, print_exception=None)
 >>> promise()
@@ -109,9 +109,7 @@ To start it, call the resulting object as a function with it's arguments. (Expla
 :param daemon: Sets up daemon flag in the thread. May be set later. Optional.
 :param print_exception: Sets up the final exception printing level. Pass ``False`` to suppress.
 
-.. _Promisecall
-
-__ Promisecall_
+.. _Promise.call:
 
 Promise.__call__
 ----------------
@@ -120,6 +118,8 @@ Promise.__call__
 
 Starts the thread and passes the arguments of the function into it.
 Returns self, for simple adding `Promise.then`_(), `Promise.wait`_() or `Promise.catch`_().
+
+.. _Promise.wait:
 
 Promise.wait
 ------------
@@ -131,6 +131,8 @@ Pauses the current thread to wait until the underlying promise resolves.
 If ``timeout`` is set, raises ``easync.TimeoutError`` if it's reached.
 
 Returns result of the underlying function if there's any.
+
+.. _Promise.then:
 
 Promise.then
 ------------
@@ -161,6 +163,8 @@ This is done to have this kind of behaviour:
                         exception.
 :print_exception:       Passed into the corresponding argument of the newly created Promise_.
 :return:                New Promise_.
+
+.. _Promise.catch:
 
 Promise.catch
 -------------
