@@ -134,7 +134,7 @@ If ``timeout`` is set, raises ``easync.TimeoutError`` if it's reached.
 
 Returns result of the underlying function if there's any.
 
-.. _Promise.then:
+.. _Promise-then:
 
 Promise.then
 ------------
