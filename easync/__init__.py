@@ -404,7 +404,7 @@ class Promise(threading.Thread):
         else:
             return self.result
 
-    def then(self, resolved=None, rejected=None, print_exception=None):
+    def then(self, resolved=None, rejected=None, print_exception=logging.ERROR):
         """
         The promise result. This function creates a new Promise which waits for current one, and calls corresponding
         function:
@@ -414,8 +414,6 @@ class Promise(threading.Thread):
         :param print_exception: Log level to output the exception, or None to mute it. See `logging`.
         :rtype: Promise
         """
-        if print_exception is None:
-            print_exception = self.print_exception
         self.print_exception = None
         me = self
 
@@ -438,7 +436,7 @@ class Promise(threading.Thread):
         p = Promise(wait_and_resolve, print_exception=print_exception)
         return p()
 
-    def catch(self, callback=None, print_exception=None):
+    def catch(self, callback=None, print_exception=logging.ERROR):
         """
         Same as `then` ``(None, callback)``
 
@@ -459,7 +457,7 @@ class Promise(threading.Thread):
             self.resolved = True
         except Exception as e:
             info = sys.exc_info()
-            if self.print_exception is not None:
+            if self.print_exception is not None and self.print_exception is not False:
                 log_exception(e, info, level=self.print_exception)
             self.exception = e
             self.resolved = False
