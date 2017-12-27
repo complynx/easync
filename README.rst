@@ -111,7 +111,7 @@ To start it, call the resulting object as a function with it's arguments. (Expla
 :param daemon: Sets up daemon flag in the thread. May be set later. Optional.
 :param print_exception: Sets up the final exception printing level. Pass ``False`` to suppress.
 
-.. _Promise.call:
+.. _Promisecall:
 
 Promise.__call__
 ----------------
@@ -121,7 +121,7 @@ Promise.__call__
 Starts the thread and passes the arguments of the function into it.
 Returns self, for simple adding `Promise.then`_(), `Promise.wait`_() or `Promise.catch`_().
 
-.. _Promise.wait:
+.. _Promisewait:
 
 Promise.wait
 ------------
@@ -134,7 +134,7 @@ If ``timeout`` is set, raises ``easync.TimeoutError`` if it's reached.
 
 Returns result of the underlying function if there's any.
 
-.. _Promise-then:
+.. _Promisethen:
 
 Promise.then
 ------------
