@@ -43,13 +43,13 @@ easync.Promise(...)
 Promise
 =======
 
-
 This is a threading wrapper that performs asynchronous call of the provided function.
 The behaviour is inspired by JavaScript Promises, but differs in several points.
 
 First, the resolution is based upon the return of the function beneath.
 On successful return, the result is stored in `Promise.result`_
 On exception, exception is stored in `Promise.exception`_
+More about how Promise_ resolves in `Resolving Promises`_.
 
 You can add callbacks by using methods `Promise.then`_
 or `Promise.catch`_
@@ -80,6 +80,11 @@ Callbacks usage:
 >>> Promise(func)(...args).then(callback, error).then(some_final)
 Promise(...)
 
+.. _Promise.Callable:
+
+Promise.Callable
+    The to-be-runned function.
+
 .. _Promise.result:
 
 Promise.result
@@ -93,8 +98,54 @@ Promise.exception
 .. _Promise.resolved:
 
 Promise.resolved
-    True if the function resolves.
+    True if the function resolves. More about it in `Resolving Promises`_.
 
+.. _Promise.started:
+
+Promise.started
+    ``threading.Event``, sets when thread is started.
+
+.. _Promise.finished:
+
+Promise.finished
+    ``threading.Event``, sets when thread is finished, no matter where had it been resolved or not.
+
+.. _Promise.print_exception:
+
+Promise.print_exception
+    Enables exception printout if caught. Uses logging to do so and has to be one of logging levels. ``False`` or
+    ``None`` disable. Also automatically sets to False when a dependent Promise_ created through `Promise.then`_ or
+    `Promise.catch`_.
+
+
+Resolving Promises
+------------------
+
+
+Functions
+^^^^^^^^^
+
+If the Promise_ is constructed with a function, it will resolve in it's return or reject with the caught exception.
+
+Other Promises
+^^^^^^^^^^^^^^
+
+Just resolves in the same way the other one is resolved. Printouts will be suppressed in the first one.
+
+Events and Conditions
+^^^^^^^^^^^^^^^^^^^^^
+
+If Promise_ is based on ``threading.Event`` or ``threading.Condition``, it is resolved when the underlying Event or
+Condition occurs. The type testing is duck-type for having the ``wait`` method, so anything using the interface of
+waiting can be resolved, for example other Promises, or threads.
+
+The resolving is based on testing `is_failed`_ on the object, and if that one returns, the Promise_ rejects. Otherwise,
+the `get_result`_ is called to obtain the result. Both are duck-type thingeys.
+
+Anything else
+^^^^^^^^^^^^^
+
+Resolves successfully with the result equals to the passed-in argument.
 
 Promise.__init__
 ----------------
@@ -107,7 +158,7 @@ To start it, call the resulting object as a function with it's arguments. (Expla
 >>> promise = Promise(func, print_exception=None)
 >>> promise()
 
-:param function: Function to resolve.
+:param function: Function, Event, Condition, or anything else to resolve.
 :param daemon: Sets up daemon flag in the thread. May be set later. Optional.
 :param print_exception: Sets up the final exception printing level. Pass ``False`` to suppress.
 
@@ -168,5 +219,72 @@ Promise.catch
 
 The same as `Promise.then`_ (resolved=None, callback, print_exception).
 
+Promise static methods
+======================
 
+Promise.resolve
+---------------
+
+``Promise.resolve(thing)``
+
+Resolves ``thing``, regardless of what it is, to result.
+
+:param thing: any
+:return: resolved Promise_ with the `Promise.result`_ equals to ``thing``.
+
+Promise.reject
+--------------
+
+``Promise.reject(thing)``
+
+Rejects ``thing``, regardless of what it is.
+
+:param thing: any
+:return: rejected Promise_ with the `Promise.exception`_ equals to ``thing``.
+
+Promise.all
+-----------
+
+``Promise.all(things)``
+
+Resolves when *all* the items in the ``enumerate(things)`` are resolved.
+Or rejects when *any* of the items is rejected.
+
+:param things: ``list`` of things or anything to be ``enumerate``'d.
+:result: ``list`` of results of all the Promises for each of the items.
+:exception: first caught exception.
+
+Promise.race
+------------
+
+``Promise.race(things)``
+
+Resolves when *any* of the items in the ``enumerate(things)`` is resolved.
+Or rejects when *any* of the items is rejected.
+
+:param things: ``list`` of things or anything to be ``enumerate``'d.
+:result: the result of the first resolved item.
+:exception: first caught exception.
+
+Other functions
+===============
+
+get_result
+----------
+
+``get_result(obj)``
+
+Returns the first found attribute of ``result`` or ``success`` of the object obj, if any. Otherwise returns ``None``.
+
+is_failed
+---------
+
+``is_failed(obj)``
+
+Returns:
+
+:found property: if one of ``error``, ``exception``, ``failure`` is found.
+:True: if one of ``failed`` or ``is_failed`` is true.
+:True: if ``success`` is present and is ``False``.
+:None: Otherwise
 

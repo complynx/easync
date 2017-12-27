@@ -53,33 +53,13 @@ def _has_methods(obj, *methods):
     return True
 
 
-def _is_event_interface(obj):
-    """
-    Ducktype-tester for `threading.Event` type.
-    Returns `True` if object has callable ``set`` and ``is_set``
-    :param obj:
-    :return: boolean
-    """
-    return _has_methods(obj, 'set', 'is_set')
-
-
-def _is_condition_interface(obj):
-    """
-    Ducktype-tester for `threading.Condition` type.
-    Returns `True` if object has callable ``wait``, ``notify``, ``notify_all``, ``acquire`` and ``release``
-    :param obj:
-    :return: boolean
-    """
-    return _has_methods(obj, 'wait', 'notify', 'notify_all', 'acquire', 'release')
-
-
-def _is_notifyable(obj):
+def _is_waitable(obj):
     """
     Ducktype-tester for `threading.Condition` or `threading.Event` type.
     :param obj:
     :return: boolean
     """
-    return _is_condition_interface(obj) or _is_event_interface(obj)
+    return _has_methods(obj, 'wait')
 
 
 def _get_first_of(obj, *args):
@@ -110,7 +90,7 @@ def is_failed(ev):
     if error is not None:
         return error
 
-    if _get_first_of(ev, 'failed'):
+    if _get_first_of(ev, 'failed', 'is_failed'):
         return True
 
     s = _get_first_of(ev, 'success')
@@ -146,10 +126,10 @@ class Promise(threading.Thread):
 
     .. code-block:: python
 
-        promise = Promise(func)(...args)
+        promise = Promise(func)(...__args)
         result = promise.wait()
         #  or
-        result = Promise(func)(...args).wait()
+        result = Promise(func)(...__args).wait()
 
         #  callbacks
         def callback(result):
@@ -159,20 +139,22 @@ class Promise(threading.Thread):
         def some_final(_):
             cleanup()
 
-        Promise(func)(...args).then(callback, exception_catcher).then(some_final)
+        Promise(func)(...__args).then(callback, exception_catcher).then(some_final)
 
     For advanced usage, see https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Promise
     It is close to that document, though functions in Promises can use any arguments and should be started manually.
     Rejections thus are based on exceptions and resolutions are simply function results.
     """
     Callable = None
-    result = None
-    args = None
-    kwargs = None
-    resolved = None
-    exception = None
+
     started = None
+    resolved = None
+    result = None
+    exception = None
     print_exception = None
+
+    __args = None
+    __kwargs = None
 
     def __init__(self, function=None, daemon=False, print_exception=logging.ERROR):
         """
@@ -216,10 +198,11 @@ class Promise(threading.Thread):
                 else:
                     raise func.exception
 
+            func.print_exception = False
             self.Callable = wait_and_resolve
             self()
 
-        elif _is_notifyable(func):
+        elif _is_waitable(func):
             def wait_event():
                 """
                 Waits for notifyable to be set.
@@ -311,9 +294,9 @@ class Promise(threading.Thread):
 
             while stop.count:
                 stop.wait()
-                stop.clear()
                 if stop.rejected is not None:
                     raise stop.rejected.exception
+                stop.clear()
 
             return things
 
@@ -382,8 +365,8 @@ class Promise(threading.Thread):
             current = threading.currentThread()
             self.parent = (current.getName(), current.ident)
 
-            self.args = args
-            self.kwargs = kwargs
+            self.__args = args
+            self.__kwargs = kwargs
             self.start()
         return self
 
@@ -453,7 +436,12 @@ class Promise(threading.Thread):
         Runs the function and then the callback.
         """
         try:
-            self.result = self.Callable(*self.args, **self.kwargs)
+            args = self.__args
+            kwargs = self.__kwargs
+            self.__args = None
+            self.__kwargs = None
+
+            self.result = self.Callable(*args, **kwargs)
             self.resolved = True
         except Exception as e:
             info = sys.exc_info()
