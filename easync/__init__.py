@@ -485,7 +485,7 @@ def async(function=None, daemon=False, print_exception=logging.ERROR, no_promise
             :param func: The function to be decorated.
             :return: Wrapped function.
             """
-            return async(func, daemon, print_exception)
+            return async(func, daemon, print_exception, no_promise)
 
         return add_async_callback
     else:
@@ -497,10 +497,11 @@ def async(function=None, daemon=False, print_exception=logging.ERROR, no_promise
             :return: Thread of the function.
             :rtype: Promise
             """
+            promise = Promise(function,
+                              daemon=daemon,
+                              print_exception=print_exception)(*args, **kwargs)
             if not no_promise:
-                return Promise(function,
-                               daemon=daemon,
-                               print_exception=print_exception)(*args, **kwargs)
+                return promise
 
         async_caller.async = True
 
