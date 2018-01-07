@@ -453,7 +453,7 @@ class Promise(threading.Thread):
             self.finished.set()
 
 
-def async(function=None, daemon=False, print_exception=logging.ERROR):
+def async(function=None, daemon=False, print_exception=logging.ERROR, no_promise=False):
     """
     Decorator around the functions for them to be asynchronous.
 
@@ -474,6 +474,7 @@ def async(function=None, daemon=False, print_exception=logging.ERROR):
     :param function: The function to be decorated.
     :param Boolean daemon: Optional. Create the daemon thread, that will die when no other threads left.
     :param print_exception: Log level to log the exception, if any, or None to mute it. See `logging`.
+    :param no_promise: will not return promise.
     :return: Wrapped function.
     """
     if function is None:
@@ -496,9 +497,10 @@ def async(function=None, daemon=False, print_exception=logging.ERROR):
             :return: Thread of the function.
             :rtype: Promise
             """
-            return Promise(function,
-                           daemon=daemon,
-                           print_exception=print_exception)(*args, **kwargs)
+            if not no_promise:
+                return Promise(function,
+                               daemon=daemon,
+                               print_exception=print_exception)(*args, **kwargs)
 
         async_caller.async = True
 

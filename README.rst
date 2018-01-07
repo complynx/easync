@@ -39,6 +39,8 @@ easync.Promise(...)
 :param function: The function to be decorated.
 :param Boolean daemon: Optional. Create the daemon thread, that will die when no other threads left.
 :param print_exception: Log level to log the exception, if any, or None to mute it. See ``logging``.
+:param no_promise: Will not return a thing, instead of returning Promise_, good for decorating, for example, Tornado
+                   handlers.
 :return: Wrapped function, Promise_ generator.
 
 
