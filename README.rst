@@ -72,13 +72,15 @@ Basic usage:
 <result>  # if any
 >>> promise.exception
 Exception  # if something went wrong
+>>> promise.exc_info
+Tuple (Exception.__class__, Exception, traceback)  # if any
 
 Callbacks usage:
 
 >>> def callback(result):
 >>>     do_stuff(result)
->>> def error(exception):
->>>     my_log(exception)
+>>> def error(exception, exc_info):
+>>>     my_log(exception, exc_info=exc_info)
 >>> def some_final(_):
 >>>     cleanup()
 >>> Promise(func)(...args).then(callback, error).then(some_final)
@@ -98,6 +100,12 @@ Promise.result
 
 Promise.exception
     This parameter holds the exception if the underlying function fails.
+
+.. _Promise.exc_info:
+
+Promise.exc_info
+    This parameter holds the exception information tuple if the underlying function fails and the tuple was recovered.
+    In case of `Promise.reject`_, it will be None.
 
 .. _Promise.resolved:
 
@@ -209,12 +217,12 @@ This is done to have this kind of behaviour:
 
 >>> Promise(action)(...args).then(parse_result).then(parse_one_more_result).catch(any_exception).then(cleanup)
 
-:function resolved(result):         The positive callback for the Promise_. Has to accept one positional argument -
-                                    the result.
-:function rejected(exception):      The negative callback for the Promise_. Has to accept one positional argument -
-                                    the caught exception.
-:print_exception:                   Passed into the corresponding argument of the newly created Promise_.
-:return:                            New Promise_.
+:function resolved(result):                 The positive callback for the Promise_. Has to accept one positional
+                                            argument - the result.
+:function rejected(exception, exc_info):    The negative callback for the Promise_. Has to accept two positional
+                                            arguments - the caught exception and it's exc_info.
+:print_exception:                           Passed into the corresponding argument of the newly created Promise_.
+:return:                                    New Promise_.
 
 Promise.catch
 -------------
@@ -242,6 +250,8 @@ Promise.reject
 ``Promise.reject(thing)``
 
 Rejects ``thing``, regardless of what it is.
+
+**NOTE**, if this will be called, the `Promise.exc_info`_ will be set None.
 
 :param thing: any
 :return: rejected Promise_ with the `Promise.exception`_ equals to ``thing``.

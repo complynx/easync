@@ -78,7 +78,7 @@ def result_asserter(x):
     return False
 
 
-def failure_asserter(e):
+def failure_asserter(e, i):
     if isinstance(e, FakeFail):
         to_be_true2.set()
         return True
