@@ -151,6 +151,7 @@ class Promise(threading.Thread):
     resolved = None
     result = None
     exception = None
+    exc_info = None
     print_exception = None
 
     __args = None
@@ -185,7 +186,7 @@ class Promise(threading.Thread):
 
         Else, pass on, wait for start.
         """
-        func = self.Callable
+        func = self.Callable  # type: Promise
 
         if isinstance(func, Promise):
             def wait_and_resolve():
@@ -194,9 +195,12 @@ class Promise(threading.Thread):
                 """
                 func.wait()
                 if func.resolved is True:
-                    return func.Result
+                    return func.result
                 else:
-                    raise func.exception
+                    if func.exc_info is not None:
+                        raise func.exc_info[0], func.exc_info[1], func.exc_info[2]
+                    else:
+                        raise func.exception
 
             func.print_exception = False
             self.Callable = wait_and_resolve
@@ -284,7 +288,7 @@ class Promise(threading.Thread):
                             stop.set()
                             stop.count -= 1
 
-                        def excepter(_):
+                        def excepter(_, __):
                             stop.rejected = thing
                             stop.set()
 
@@ -295,7 +299,10 @@ class Promise(threading.Thread):
             while stop.count:
                 stop.wait()
                 if stop.rejected is not None:
-                    raise stop.rejected.exception
+                    if stop.rejected.exc_info is not None:
+                        raise stop.rejected.exc_info[0], stop.rejected.exc_info[1], stop.rejected.exc_info[2]
+                    else:
+                        raise stop.rejected.exception
                 stop.clear()
 
             return things
@@ -319,11 +326,11 @@ class Promise(threading.Thread):
             :return: result
             """
             stop = threading.Event()
-            stop.finished = None
+            stop.finished = None  # type: Promise
             for thing in things:
                 if isinstance(thing, Promise):
                     def closure(thing):
-                        def resolver(_):
+                        def resolver(*_):
                             stop.set()
                             stop.finished = thing
 
@@ -335,9 +342,12 @@ class Promise(threading.Thread):
 
             stop.wait()
             if stop.finished.resolved is True:
-                return stop.finished.Result
+                return stop.finished.result
             else:
-                raise stop.finished.exception
+                if stop.finished.exc_info is not None:
+                    raise stop.finished.exc_info[0], stop.finished.exc_info[1], stop.finished.exc_info[2]
+                else:
+                    raise stop.finished.exception
 
         p = Promise(all_resolver)
         return p()
@@ -412,9 +422,12 @@ class Promise(threading.Thread):
                     return me.result
             else:
                 if callable(rejected):
-                    return rejected(me.exception)
+                    return rejected(me.exception, me.exc_info)
                 else:
-                    raise me.exception
+                    if me.exc_info is not None:
+                        raise me.exc_info[0], me.exc_info[1], me.exc_info[2]
+                    else:
+                        raise me.exception
 
         p = Promise(wait_and_resolve, print_exception=print_exception)
         return p()
@@ -448,6 +461,7 @@ class Promise(threading.Thread):
             if self.print_exception is not None and self.print_exception is not False:
                 log_exception(e, info, level=self.print_exception)
             self.exception = e
+            self.exc_info = info
             self.resolved = False
         finally:
             self.finished.set()
