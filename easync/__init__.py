@@ -6,6 +6,8 @@ import traceback
 
 logger = logging.getLogger('easync')
 
+PY3 = sys.version_info >= (3, 0)
+
 
 def log_exception(exception, exc_info=sys.exc_info(), level=logging.WARNING):
     """
@@ -198,6 +200,8 @@ class Promise(threading.Thread):
                     return func.result
                 else:
                     if func.exc_info is not None:
+                        if PY3:
+                            raise func.exception.with_traceback(func.exc_info[2])
                         raise func.exc_info[0], func.exc_info[1], func.exc_info[2]
                     else:
                         raise func.exception
@@ -300,6 +304,8 @@ class Promise(threading.Thread):
                 stop.wait()
                 if stop.rejected is not None:
                     if stop.rejected.exc_info is not None:
+                        if PY3:
+                            raise stop.rejected.exception.with_traceback(stop.rejected.exc_info[2])
                         raise stop.rejected.exc_info[0], stop.rejected.exc_info[1], stop.rejected.exc_info[2]
                     else:
                         raise stop.rejected.exception
@@ -345,6 +351,8 @@ class Promise(threading.Thread):
                 return stop.finished.result
             else:
                 if stop.finished.exc_info is not None:
+                    if PY3:
+                        raise stop.finished.exception.with_traceback(stop.finished.exc_info[2])
                     raise stop.finished.exc_info[0], stop.finished.exc_info[1], stop.finished.exc_info[2]
                 else:
                     raise stop.finished.exception
@@ -425,6 +433,8 @@ class Promise(threading.Thread):
                     return rejected(me.exception, me.exc_info)
                 else:
                     if me.exc_info is not None:
+                        if PY3:
+                            raise me.exception.with_traceback(me.exc_info[2])
                         raise me.exc_info[0], me.exc_info[1], me.exc_info[2]
                     else:
                         raise me.exception
