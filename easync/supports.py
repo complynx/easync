@@ -29,13 +29,13 @@ def log_exception(exception, exc_info=sys.exc_info(), level=logging.WARNING):
                                                                      module=i[2],
                                                                      call=i[3])
         thread = threading.currentThread()
-        msg = '%s: %s' % (type(exception).__name__, exception.message)
-        msg += '\nTraceback: (latest call first)' + tb_str + 'Thread: %s(%d)' % (thread.getName(), thread.ident)
+        msg = '{}: {}'.format(type(exception).__name__, exception)
+        msg += '\nTraceback: (latest call first)' + tb_str + 'Thread: {}({:d})'.format(thread.getName(), thread.ident)
 
         logger.handle(logger.makeRecord(logger.name, level, tb[0][0], tb[0][1], msg, (), None, tb[0][2]))
     except Exception as e:
-        logger.warn("Could not make an exception trace for exception: %s" % exception.message)
-        logger.warn("Caught exeption: %s" % e.message)
+        logger.error("Could not make an exception trace for exception: {}\nCaught exception: {}".format(exception, e),
+                     exc_info=sys.exc_info())
 
 
 def _has_methods(obj, *methods):
@@ -176,6 +176,63 @@ class Promise2and3(threading.Thread):
         self._check_callable()
 
     def _check_callable(self):
+        """
+        Checks what to do with `Callable`:
+
+         1) if it is not callable, treat it as a result.
+         2) if it's `Promise`, depend on it.
+         3) if it's `threading.Event` or `threading.Condition`, wait for it and resolve.
+
+        Else, pass on, wait for start.
+        """
+        func = self.Callable
+
+        if isinstance(func, Promise2and3):
+            def wait_and_resolve():
+                """
+                Waits for passed in `Promise` and resolves in the same way.
+                """
+                func.wait()
+                if func.resolved is True:
+                    return func.result
+                else:
+                    self._raise(func.exception, func.exc_info)
+
+            func.print_exception = False
+            self.Callable = wait_and_resolve
+            self()
+
+        elif is_waitable(func):
+            def wait_event():
+                """
+                Waits for notifyable to be set.
+                """
+                func.wait()
+                err = is_failed(func)
+                if err is not None:
+                    self._raise(err)
+
+                return get_result(func)
+
+            self.Callable = wait_event
+            self()
+
+        elif not callable(func):
+            self.result = func
+            self.started.set()
+            self.finished.set()
+            self.resolved = True
+
+    @staticmethod
+    def _raise(exception, exc_info=None):
+        """
+        Raises the passed exception.
+        As this is python version specific, it is to be implemented according to the specified version.
+
+        :param Exception exception:
+        :param () exc_info:
+        :raise: exception
+        """
         raise NotImplementedError
 
     @classmethod
@@ -203,13 +260,111 @@ class Promise2and3(threading.Thread):
         p.resolved = False
         return p
 
-    @staticmethod
-    def all(things):
-        raise NotImplementedError
+    @classmethod
+    def all(cls, things):
+        """
+        Creates a `Promise` that waits for each one of ``things``, or rejects with the first failed one of them.
 
-    @staticmethod
-    def race(things):
-        raise NotImplementedError
+        :param list things: things to wait.
+        :rtype: Promise
+        """
+
+        def all_resolver():
+            """
+            Internal, resolver for the new `Promise`.
+
+            :return list: results
+            """
+            stop = threading.Event()
+            stop.rejected = None
+            stop.count = 0
+            for i, thing in enumerate(things):
+                if isinstance(thing, Promise2and3):
+                    stop.count += 1
+
+                    def closure(i, thing):
+                        """
+                        Closure to save indexes.
+
+                        :param i: index
+                        :param thing: current `Promise`
+                        :return:
+                        """
+
+                        def excepter(_, __):
+                            stop.rejected = thing
+                            stop.set()
+
+                        def resolver(result):
+                            needs_stop = True
+                            if isinstance(result, Promise2and3):
+                                needs_stop = False
+                                result.then(resolver, excepter)
+                            things[i] = result
+                            if needs_stop:
+                                stop.set()
+                                stop.count -= 1
+
+                        thing.then(resolver, excepter)
+
+                    closure(i, thing)
+
+            while stop.count:
+                stop.wait()
+                if stop.rejected is not None:
+                    cls._raise(stop.rejected.exception, stop.rejected.exc_info)
+                stop.clear()
+
+            return things
+
+        p = cls(all_resolver)
+        return p()
+
+    @classmethod
+    def race(cls, things):
+        """
+        Creates a `Promise` that waits to any of ``things`` and returns it's result.
+
+        :param list things: things to wait.
+        :rtype: Promise
+        """
+
+        def all_resolver():
+            """
+            Internal, resolver for the new `Promise`.
+
+            :return: result
+            """
+            stop = threading.Event()
+            stop.finished = None  # type: cls
+            _things = list(things)
+            for i, thing in enumerate(_things):
+                if isinstance(thing, Promise2and3):
+                    def closure(i, thing):
+                        def resolver(*_):
+                            needs_stop = True
+                            if isinstance(_things[i].result, Promise2and3):
+                                needs_stop = False
+                                t = _things[i] = _things[i].result
+                                t.then(resolver, resolver)
+                            if needs_stop:
+                                stop.set()
+                                stop.finished = thing
+
+                        thing.then(resolver, resolver)
+
+                    closure(i, thing)
+                else:
+                    return thing
+
+            stop.wait()
+            if stop.finished.resolved is True:
+                return stop.finished.result
+            else:
+                cls._raise(stop.finished.exception, stop.finished.exc_info)
+
+        p = cls(all_resolver)
+        return p()
 
     def __resolve_name(self):
         """
@@ -217,9 +372,12 @@ class Promise2and3(threading.Thread):
         """
         func = self.Callable
         if hasattr(func, 'func_globals') and hasattr(func, 'func_code'):
-            self.name = "%s:%d:%s" % (func.func_globals["__name__"], func.func_code.co_firstlineno, func.__name__)
+            self.name = "{global_name}:{line:d}:{name}"\
+                .format(line=func.func_code.co_firstlineno,
+                        name=func.__name__,
+                        global_name=func.func_globals['__name__'])
         else:
-            self.name = 'Promise(%s)' % str(func)
+            self.name = 'Promise({})'.format(repr(func))
 
     def __call__(self, *args, **kwargs):
         """
@@ -257,7 +415,36 @@ class Promise2and3(threading.Thread):
             return self.result
 
     def then(self, resolved=None, rejected=None, print_exception=logging.ERROR):
-        raise NotImplementedError
+        """
+        The promise result. This function creates a new Promise which waits for current one, and calls corresponding
+        function:
+
+        :param resolved: Is called when function ended up conveniently. Receives result as a parameter.
+        :param rejected: Is called if function raises an exception, receives the exception.
+        :param print_exception: Log level to output the exception, or None to mute it. See `logging`.
+        :rtype: Promise
+        """
+        self.print_exception = None
+        me = self
+
+        def wait_and_resolve():
+            """
+            Waits for current promise and resolves it.
+            """
+            me.wait()
+            if me.resolved is True:
+                if callable(resolved):
+                    return resolved(me.result)
+                else:
+                    return me.result
+            else:
+                if callable(rejected):
+                    return rejected(me.exception, me.exc_info)
+                else:
+                    self._raise(me.exception, me.exc_info)
+
+        p = self.__class__(wait_and_resolve, print_exception=print_exception)
+        return p()
 
     def catch(self, callback=None, print_exception=logging.ERROR):
         """
@@ -268,6 +455,22 @@ class Promise2and3(threading.Thread):
         :rtype: Promise
         """
         return self.then(rejected=callback, print_exception=print_exception)
+
+    def resolve_subsequent(self, result):
+        """
+        Resolves all the promises returned by the function, if any.
+        Because the result is not a promise!
+        :param result:
+        :return:
+        """
+        while isinstance(result, Promise2and3):
+            result.print_exception = None
+            result.wait()
+            if result.resolved is False:
+                self._raise(result.exception, result.exc_info)
+            result = result.result
+
+        return result
 
     def run(self):
         """
@@ -281,7 +484,9 @@ class Promise2and3(threading.Thread):
             self.__args = None
             self.__kwargs = None
 
-            self.result = self.Callable(*args, **kwargs)
+            res = self.Callable(*args, **kwargs)
+
+            self.result = self.resolve_subsequent(res)
             self.resolved = True
         except Exception as e:
             info = sys.exc_info()

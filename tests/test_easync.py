@@ -40,6 +40,16 @@ def set_true_twostage():
     return 5
 
 
+@easync.async
+def returns_promise():
+    return set_true()
+
+
+@easync.async
+def returns_failing_promise():
+    return to_fail()
+
+
 class Stub(object):
     @easync.async
     def set_true(self):
@@ -98,11 +108,36 @@ def test_promise():
     assert to_be_true2.wait(1)
 
 
+def test_promise_subsequent():
+    to_be_true.clear()
+    to_be_true2.clear()
+    pause_event.clear()
+    p = returns_promise()
+
+    p.then(result_asserter)
+
+    pause_event.set()
+    assert to_be_true.wait(1)
+    assert to_be_true2.wait(1)
+
+
 def test_failure():
     to_be_true.clear()
     to_be_true2.clear()
     pause_event.clear()
     p = to_fail()
+
+    p.catch(failure_asserter)
+
+    pause_event.set()
+    assert to_be_true2.wait(1)
+
+
+def test_failure_subsequent():
+    to_be_true.clear()
+    to_be_true2.clear()
+    pause_event.clear()
+    p = returns_failing_promise()
 
     p.catch(failure_asserter)
 
